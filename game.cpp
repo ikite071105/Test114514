@@ -1,10 +1,11 @@
 #include "game.h"
 #include <stdlib.h>
+#include <time.h>
 #include <string.h>
 #include <stdio.h>
 #include "screen.h"
 
-//Íæ¼Ò³õÊ¼»¯
+//ç©å®¶åˆå§‹åŒ–
 void initPlayer(Player* player, const char* name, PlayerType type) {
     strncpy_s(player->name, sizeof(player->name), name, sizeof(player->name) - 1);
     player->name[sizeof(player->name) - 1] = '\0';
@@ -16,142 +17,142 @@ void initPlayer(Player* player, const char* name, PlayerType type) {
     player->isOut = false;
 }
 
-//¸øÍæ¼Ò·¢ÅÆ£¨5£©
+//ç»™ç©å®¶å‘ç‰Œï¼ˆ5ï¼‰
 void dealCardsToPlayer(Player* player, Deck* deck , int CardNum) {
     for(int i = 0; i < CardNum; i++) {
         if (canDeal(deck)) {
             player->hand[i] = dealCard(deck);
-            player->hand[i].visible = false; //·¢ÅÆÊ±Ä¬ÈÏ·´ÃæÏÔÊ¾
+            player->hand[i].visible = false; //å‘ç‰Œæ—¶é»˜è®¤åé¢æ˜¾ç¤º
         }
         else {
             resetDeck(deck);
             player->hand[i] = dealCard(deck);
-            player->hand[i].visible = false; //·¢ÅÆÊ±Ä¬ÈÏ·´ÃæÏÔÊ¾
+            player->hand[i].visible = false; //å‘ç‰Œæ—¶é»˜è®¤åé¢æ˜¾ç¤º
         }
     }
 }
 
-//Íæ¼ÒÏÂ×¢»ò¸ú×¢
+//ç©å®¶ä¸‹æ³¨æˆ–è·Ÿæ³¨
 void playerCallorBet(PokerGame* game,Player* player, int amount) {
         player->chips -= amount;
-        game->currentBet = amount; //µ±Ç°ÏÂ×¢¸üĞÂ
-        game->pot += amount;       //µ×³Ø+
+        game->currentBet = amount; //å½“å‰ä¸‹æ³¨æ›´æ–°
+        game->pot += amount;       //åº•æ± +
 }
 
-//Íæ¼Ò¼Ó×¢
+//ç©å®¶åŠ æ³¨
 void playerRaise(PokerGame* game, Player* player, int amount, int raiseAmount) {
      player->chips -= ( amount + raiseAmount);
      game->pot += (amount + raiseAmount);
-     game->currentPlayer = (amount + raiseAmount);
+     game->currentBet = (amount + raiseAmount);
 }
 
-//Íæ¼ÒÏÂ×¢»ØºÏÑ¡Ïî
+//ç©å®¶ä¸‹æ³¨å›åˆé€‰é¡¹
 Action playerBetChoice(PokerGame* game, Player* player, bool* isbetting) {
     Action action;
-    // ¶¨ÒåÑ¡ÔñÇøÓò
-    const int choiceBoxY = 450;        // Ñ¡Ôñ¿òY×ø±ê
-    const int choiceFirstX = 250;      // µÚÒ»¸ö°´Å¥X×ø±ê
-    const int choiceStep = 110;        // °´Å¥x×ø±ê¼ä¸ô
-    const int choiceWidth = 80;        // Ñ¡Ôñ¿ò¿í¶È
-    const int choiceHeight = 40;       // Ñ¡Ôñ¿ò¸ß¶È
+    // å®šä¹‰é€‰æ‹©åŒºåŸŸ
+    const int choiceBoxY = 450;        // é€‰æ‹©æ¡†Yåæ ‡
+    const int choiceFirstX = 250;      // ç¬¬ä¸€ä¸ªæŒ‰é’®Xåæ ‡
+    const int choiceStep = 110;        // æŒ‰é’®xåæ ‡é—´éš”
+    const int choiceWidth = 80;        // é€‰æ‹©æ¡†å®½åº¦
+    const int choiceHeight = 40;       // é€‰æ‹©æ¡†é«˜åº¦
 
-    bool choiceMade = false;           // ÊÇ·ñÒÑ×ö³öÑ¡Ôñ
-    int hoveredChoice = 0;             // 0:ÎŞĞüÍ£, 1:ÆúÅÆ, 2:¹ıÅÆ/¸ú×¢£¬3:ÏÂ×¢/¼Ó×¢/È«Ñº
+    bool choiceMade = false;           // æ˜¯å¦å·²åšå‡ºé€‰æ‹©
+    int hoveredChoice = 0;             // 0:æ— æ‚¬åœ, 1:å¼ƒç‰Œ, 2:è¿‡ç‰Œ/è·Ÿæ³¨ï¼Œ3:ä¸‹æ³¨/åŠ æ³¨/å…¨æŠ¼
 
-    // »æÖÆ"ÇëÑ¡Ôñ²Ù×÷"
+    // ç»˜åˆ¶"è¯·é€‰æ‹©æ“ä½œ"
     settextcolor(WHITE);
-    settextstyle(30, 0, _T("ºÚÌå"));
-    outtextxy(200, choiceBoxY - 40, _T("ÇëÑ¡Ôñ²Ù×÷"));
+    settextstyle(30, 0, _T("é»‘ä½“"));
+    outtextxy(200, choiceBoxY - 40, _T("è¯·é€‰æ‹©æ“ä½œ"));
 
-    // »æÖÆÑ¡Ôñ°´Å¥
-    //µ±Ç°Î´ÏÂ×¢ÇÒÍæ¼Ò³ïÂë×ã¹»
-    if (!*isbetting && player->chips >= 10) {
-        drawChoiceButton(choiceFirstX, choiceBoxY, choiceWidth, choiceHeight, _T("ÆúÅÆ"), hoveredChoice == 1);
-        drawChoiceButton(choiceFirstX + choiceStep, choiceBoxY, choiceWidth, choiceHeight, _T("¹ıÅÆ"), hoveredChoice == 2);
-        drawChoiceButton(choiceFirstX + 2*choiceStep, choiceBoxY, choiceWidth, choiceHeight, _T("ÏÂ×¢"), hoveredChoice == 3);
-    }//µ±Ç°Î´ÏÂ×¢µ«Íæ¼Ò³ïÂë²»×ã
+    // ç»˜åˆ¶é€‰æ‹©æŒ‰é’®
+    //å½“å‰æœªä¸‹æ³¨ä¸”ç©å®¶ç­¹ç è¶³å¤Ÿ
+    if (!*isbetting && player->chips > 10) {
+        drawChoiceButton(choiceFirstX, choiceBoxY, choiceWidth, choiceHeight, _T("å¼ƒç‰Œ"), hoveredChoice == 1);
+        drawChoiceButton(choiceFirstX + choiceStep, choiceBoxY, choiceWidth, choiceHeight, _T("è¿‡ç‰Œ"), hoveredChoice == 2);
+        drawChoiceButton(choiceFirstX + 2*choiceStep, choiceBoxY, choiceWidth, choiceHeight, _T("ä¸‹æ³¨"), hoveredChoice == 3);
+    }//å½“å‰æœªä¸‹æ³¨ä½†ç©å®¶ç­¹ç ä¸è¶³
     else if (!*isbetting && player->chips <= 10) {
-        drawChoiceButton(choiceFirstX, choiceBoxY, choiceWidth, choiceHeight, _T("ÆúÅÆ"), hoveredChoice == 1);
-        drawChoiceButton(choiceFirstX + choiceStep, choiceBoxY, choiceWidth, choiceHeight, _T("¹ıÅÆ"), hoveredChoice == 2);
-        drawChoiceButton(choiceFirstX + 2 * choiceStep, choiceBoxY, choiceWidth, choiceHeight, _T("È«Ñº"), hoveredChoice == 3);
-    }//µ±Ç°ÒÑÏÂ×¢ÇÒ³ïÂë×ã¹»
-    else if (*isbetting && player->chips >= game->currentBet) {
-        drawChoiceButton(choiceFirstX, choiceBoxY, choiceWidth, choiceHeight, _T("ÆúÅÆ"), hoveredChoice == 1);
-        drawChoiceButton(choiceFirstX + choiceStep, choiceBoxY, choiceWidth, choiceHeight, _T("¸ú×¢"), hoveredChoice == 2);
-        drawChoiceButton(choiceFirstX + 2 * choiceStep, choiceBoxY, choiceWidth, choiceHeight, _T("¼Ó×¢"), hoveredChoice == 3);
-    }//µ±Ç°ÒÑÏÂ×¢µ«³ïÂë²»×ãÒÔ¸ú×¢
+        drawChoiceButton(choiceFirstX, choiceBoxY, choiceWidth, choiceHeight, _T("å¼ƒç‰Œ"), hoveredChoice == 1);
+        drawChoiceButton(choiceFirstX + choiceStep, choiceBoxY, choiceWidth, choiceHeight, _T("è¿‡ç‰Œ"), hoveredChoice == 2);
+        drawChoiceButton(choiceFirstX + 2 * choiceStep, choiceBoxY, choiceWidth, choiceHeight, _T("å…¨æŠ¼"), hoveredChoice == 3);
+    }//å½“å‰å·²ä¸‹æ³¨ä¸”ç­¹ç è¶³å¤Ÿ
+    else if (*isbetting && player->chips > game->currentBet) {
+        drawChoiceButton(choiceFirstX, choiceBoxY, choiceWidth, choiceHeight, _T("å¼ƒç‰Œ"), hoveredChoice == 1);
+        drawChoiceButton(choiceFirstX + choiceStep, choiceBoxY, choiceWidth, choiceHeight, _T("è·Ÿæ³¨"), hoveredChoice == 2);
+        drawChoiceButton(choiceFirstX + 2 * choiceStep, choiceBoxY, choiceWidth, choiceHeight, _T("åŠ æ³¨"), hoveredChoice == 3);
+    }//å½“å‰å·²ä¸‹æ³¨ä½†ç­¹ç ä¸è¶³ä»¥è·Ÿæ³¨
     else if (*isbetting && player->chips <= game->currentBet) {
-        drawChoiceButton(choiceFirstX, choiceBoxY, choiceWidth, choiceHeight, _T("ÆúÅÆ"), hoveredChoice == 1);
-        drawChoiceButton(choiceFirstX + 2 * choiceStep, choiceBoxY, choiceWidth, choiceHeight, _T("È«Ñº"), hoveredChoice == 3);
+        drawChoiceButton(choiceFirstX, choiceBoxY, choiceWidth, choiceHeight, _T("å¼ƒç‰Œ"), hoveredChoice == 1);
+        drawChoiceButton(choiceFirstX + 2 * choiceStep, choiceBoxY, choiceWidth, choiceHeight, _T("å…¨æŠ¼"), hoveredChoice == 3);
     }
 
     FlushBatchDraw();
 
     ExMessage msg;
-    int lastHoveredChoice = 0; //Êó±êÉÏÒ»¿ÌĞüÍ£Î»ÖÃ
+    int lastHoveredChoice = 0; //é¼ æ ‡ä¸Šä¸€åˆ»æ‚¬åœä½ç½®
 
     while (!choiceMade) {
 
-        // ´¦ÀíËùÓĞÏûÏ¢
+        // å¤„ç†æ‰€æœ‰æ¶ˆæ¯
         while (peekmessage(&msg, EM_MOUSE)) {
             switch (msg.message) {
             case WM_MOUSEMOVE:
-                // ¼ì²éÊó±êÊÇ·ñĞüÍ£ÔÚÑ¡Ôñ°´Å¥ÉÏ
+                // æ£€æŸ¥é¼ æ ‡æ˜¯å¦æ‚¬åœåœ¨é€‰æ‹©æŒ‰é’®ä¸Š
                 lastHoveredChoice = hoveredChoice;
                 hoveredChoice = 0;
 
-                // ¼ì²éµÚÒ»¸ö°´Å¥
+                // æ£€æŸ¥ç¬¬ä¸€ä¸ªæŒ‰é’®
                 if (msg.x >= choiceFirstX && msg.x <= choiceFirstX + choiceWidth &&
                     msg.y >= choiceBoxY && msg.y <= choiceBoxY + choiceHeight) {
                     hoveredChoice = 1;
                 }
-                // ¼ì²éµÚ¶ş¸ö°´Å¥
+                // æ£€æŸ¥ç¬¬äºŒä¸ªæŒ‰é’®
                 else if (msg.x >= choiceFirstX+choiceStep && msg.x <= choiceFirstX + choiceStep + choiceWidth &&
                     msg.y >= choiceBoxY && msg.y <= choiceBoxY + choiceHeight) {
                     hoveredChoice = 2;
                 }
-                // ¼ì²éµÚÈı¸ö°´Å¥
+                // æ£€æŸ¥ç¬¬ä¸‰ä¸ªæŒ‰é’®
                 else if (msg.x >= choiceFirstX + 2*choiceStep && msg.x <= choiceFirstX + 2*choiceStep + choiceWidth &&
                     msg.y >= choiceBoxY && msg.y <= choiceBoxY + choiceHeight) {
                     hoveredChoice = 3;
                 }
 
-                // Èç¹ûĞüÍ£×´Ì¬¸Ä±ä£¬ÖØ»æ°´Å¥
+                // å¦‚æœæ‚¬åœçŠ¶æ€æ”¹å˜ï¼Œé‡ç»˜æŒ‰é’®
                 if (hoveredChoice != lastHoveredChoice) {
-                    //µ±Ç°Î´ÏÂ×¢ÇÒÍæ¼Ò³ïÂë×ã¹»
-                    if (!*isbetting && player->chips >= 10) {
-                        drawChoiceButton(choiceFirstX, choiceBoxY, choiceWidth, choiceHeight, _T("ÆúÅÆ"), hoveredChoice == 1);
-                        drawChoiceButton(choiceFirstX + choiceStep, choiceBoxY, choiceWidth, choiceHeight, _T("¹ıÅÆ"), hoveredChoice == 2);
-                        drawChoiceButton(choiceFirstX + 2 * choiceStep, choiceBoxY, choiceWidth, choiceHeight, _T("ÏÂ×¢"), hoveredChoice == 3);
-                    }//µ±Ç°Î´ÏÂ×¢µ«Íæ¼Ò³ïÂë²»×ã
+                    //å½“å‰æœªä¸‹æ³¨ä¸”ç©å®¶ç­¹ç è¶³å¤Ÿ
+                    if (!*isbetting && player->chips > 10) {
+                        drawChoiceButton(choiceFirstX, choiceBoxY, choiceWidth, choiceHeight, _T("å¼ƒç‰Œ"), hoveredChoice == 1);
+                        drawChoiceButton(choiceFirstX + choiceStep, choiceBoxY, choiceWidth, choiceHeight, _T("è¿‡ç‰Œ"), hoveredChoice == 2);
+                        drawChoiceButton(choiceFirstX + 2 * choiceStep, choiceBoxY, choiceWidth, choiceHeight, _T("ä¸‹æ³¨"), hoveredChoice == 3);
+                    }//å½“å‰æœªä¸‹æ³¨ä½†ç©å®¶ç­¹ç ä¸è¶³
                     else if (!*isbetting && player->chips <= 10) {
-                        drawChoiceButton(choiceFirstX, choiceBoxY, choiceWidth, choiceHeight, _T("ÆúÅÆ"), hoveredChoice == 1);
-                        drawChoiceButton(choiceFirstX + choiceStep, choiceBoxY, choiceWidth, choiceHeight, _T("¹ıÅÆ"), hoveredChoice == 2);
-                        drawChoiceButton(choiceFirstX + 2 * choiceStep, choiceBoxY, choiceWidth, choiceHeight, _T("È«Ñº"), hoveredChoice == 3);
-                    }//µ±Ç°ÒÑÏÂ×¢ÇÒ³ïÂë×ã¹»
-                    else if (*isbetting && player->chips >= game->currentBet) {
-                        drawChoiceButton(choiceFirstX, choiceBoxY, choiceWidth, choiceHeight, _T("ÆúÅÆ"), hoveredChoice == 1);
-                        drawChoiceButton(choiceFirstX + choiceStep, choiceBoxY, choiceWidth, choiceHeight, _T("¸ú×¢"), hoveredChoice == 2);
-                        drawChoiceButton(choiceFirstX + 2 * choiceStep, choiceBoxY, choiceWidth, choiceHeight, _T("¼Ó×¢"), hoveredChoice == 3);
-                    }//µ±Ç°ÒÑÏÂ×¢µ«³ïÂë²»×ãÒÔ¸ú×¢
+                        drawChoiceButton(choiceFirstX, choiceBoxY, choiceWidth, choiceHeight, _T("å¼ƒç‰Œ"), hoveredChoice == 1);
+                        drawChoiceButton(choiceFirstX + choiceStep, choiceBoxY, choiceWidth, choiceHeight, _T("è¿‡ç‰Œ"), hoveredChoice == 2);
+                        drawChoiceButton(choiceFirstX + 2 * choiceStep, choiceBoxY, choiceWidth, choiceHeight, _T("å…¨æŠ¼"), hoveredChoice == 3);
+                    }//å½“å‰å·²ä¸‹æ³¨ä¸”ç­¹ç è¶³å¤Ÿ
+                    else if (*isbetting && player->chips > game->currentBet) {
+                        drawChoiceButton(choiceFirstX, choiceBoxY, choiceWidth, choiceHeight, _T("å¼ƒç‰Œ"), hoveredChoice == 1);
+                        drawChoiceButton(choiceFirstX + choiceStep, choiceBoxY, choiceWidth, choiceHeight, _T("è·Ÿæ³¨"), hoveredChoice == 2);
+                        drawChoiceButton(choiceFirstX + 2 * choiceStep, choiceBoxY, choiceWidth, choiceHeight, _T("åŠ æ³¨"), hoveredChoice == 3);
+                    }//å½“å‰å·²ä¸‹æ³¨ä½†ç­¹ç ä¸è¶³ä»¥è·Ÿæ³¨
                     else if (*isbetting && player->chips <= game->currentBet) {
-                        drawChoiceButton(choiceFirstX, choiceBoxY, choiceWidth, choiceHeight, _T("ÆúÅÆ"), hoveredChoice == 1);
-                        drawChoiceButton(choiceFirstX + 2 * choiceStep, choiceBoxY, choiceWidth, choiceHeight, _T("È«Ñº"), hoveredChoice == 3);
+                        drawChoiceButton(choiceFirstX, choiceBoxY, choiceWidth, choiceHeight, _T("å¼ƒç‰Œ"), hoveredChoice == 1);
+                        drawChoiceButton(choiceFirstX + 2 * choiceStep, choiceBoxY, choiceWidth, choiceHeight, _T("å…¨æŠ¼"), hoveredChoice == 3);
                     }
                 }
                 break;
 
             case WM_LBUTTONDOWN:
-                // ¼ì²éÊÇ·ñµã»÷ÁËÑ¡Ôñ°´Å¥
-                if (hoveredChoice == 1) {  // µã»÷"ÆúÅÆ"
+                // æ£€æŸ¥æ˜¯å¦ç‚¹å‡»äº†é€‰æ‹©æŒ‰é’®
+                if (hoveredChoice == 1) {  // ç‚¹å‡»"å¼ƒç‰Œ"
                     action = fold;
                     playerFoldCard(player,game);
                     choiceMade = true;
                     player->isActive = false;
                 }
-                else if (hoveredChoice == 2) {  // µÚ¶ş¸ö°´Å¥
+                else if (hoveredChoice == 2) {  // ç¬¬äºŒä¸ªæŒ‰é’®
                     choiceMade = true;
-                    //¹ıÅÆ
+                    //è¿‡ç‰Œ
                     if (!*isbetting && !player->hasChecked) {
                         action = check;
                         player->hasChecked = true;
@@ -159,163 +160,161 @@ Action playerBetChoice(PokerGame* game, Player* player, bool* isbetting) {
                     else if (!*isbetting && player->hasChecked) {
                         choiceMade = false;
                     }
-                    //¸ú×¢
+                    //è·Ÿæ³¨
                     else if (player->chips >= game->currentBet) {
                         action = call;
-                        player->chips -= game->currentBet;
                     }
                 }
-                else if (hoveredChoice == 3) {  //µÚÈı¸ö°´Å¥
+                else if (hoveredChoice == 3) {  //ç¬¬ä¸‰ä¸ªæŒ‰é’®
                     choiceMade = true;
-                    //ÏÂ×¢/È«Ñº
+                    //ä¸‹æ³¨/å…¨æŠ¼
                     if (!*isbetting) {
-                        if (player->chips <= 10) {//È«Ñº
+                        if (player->chips <= 10) {//å…¨æŠ¼
                             action = allin;
                             game->pot += player->chips;
                             player->chips = 0;
                         }
-                        else { //ÏÂ×¢
+                        else { //ä¸‹æ³¨
                             action = bet;
                             *isbetting = true;
                         }
-                    }//¼Ó×¢/È«Ñº
+                    }//åŠ æ³¨/å…¨æŠ¼
                     else {
-                        if (player->chips <= game->currentBet) {//È«Ñº
+                        if (player->chips <= game->currentBet) {//å…¨æŠ¼
                             action = allin;
                             game->pot += player->chips;
                             player->chips = 0;
                         }
-                        else { //¼Ó×¢
+                        else { //åŠ æ³¨
                             action = raise;
                         }
                     }
                 }
                 break;
-
             }
         }
-        // ±ÜÃâCPUÕ¼ÓÃ¹ı¸ß
+        // é¿å…CPUå ç”¨è¿‡é«˜
         Sleep(10);
     }
-    //Çå³ıÑ¡Ôñ°´Å¥
+    //æ¸…é™¤é€‰æ‹©æŒ‰é’®
     clearChoiceButton(choiceFirstX, choiceBoxY, choiceWidth*4, choiceHeight);
-    //Çå³ıÌáÊ¾ÎÄ×Ö
+    //æ¸…é™¤æç¤ºæ–‡å­—
     setfillcolor(RGB(49, 78, 22));
-    settextstyle(20, 0, _T("ºÚÌå"));
-    solidrectangle(200, choiceBoxY - 40, 200 + textwidth(_T("µã»÷ÊÖÅÆÑ¡ÔñÒª¸ü»»µÄÅÆ")), choiceBoxY + 70);
+    settextstyle(20, 0, _T("é»‘ä½“"));
+    solidrectangle(200, choiceBoxY - 40, 200 + textwidth(_T("ç‚¹å‡»æ‰‹ç‰Œé€‰æ‹©è¦æ›´æ¢çš„ç‰Œ")), choiceBoxY + 70);
     return action;
 }
 
-//Íæ¼Ò»»ÅÆ
+//ç©å®¶æ¢ç‰Œ
 bool playerReplaceCard(Player* player, Deck *deck) {
     static bool isreplace;
     isreplace = false;
-    // ¶¨ÒåÊÖÅÆÇøÓòºÍ¹«¹²ÅÆÇøÓò
-    const int playerHandStartX = 150;  // Íæ¼ÒÊÖÅÆÆğÊ¼X×ø±ê
-    const int playerHandY = 530;       // Íæ¼ÒÊÖÅÆY×ø±ê
-    const int cardWidth = 80;          // ÅÆ¿í¶È
-    const int cardHeight = 120;        // ÅÆ¸ß¶È
+    // å®šä¹‰æ‰‹ç‰ŒåŒºåŸŸå’Œå…¬å…±ç‰ŒåŒºåŸŸ
+    const int playerHandStartX = 150;  // ç©å®¶æ‰‹ç‰Œèµ·å§‹Xåæ ‡
+    const int playerHandY = 530;       // ç©å®¶æ‰‹ç‰ŒYåæ ‡
+    const int cardWidth = 80;          // ç‰Œå®½åº¦
+    const int cardHeight = 120;        // ç‰Œé«˜åº¦
 
-    // ¶¨ÒåÑ¡ÔñÇøÓò
-    const int choiceBoxY = 450;        // Ñ¡Ôñ¿òY×ø±ê
-    const int choiceYesX = 250;        // "ÊÇ"°´Å¥X×ø±ê
-    const int choiceNoX = 350;         // "·ñ"°´Å¥X×ø±ê
-    const int choiceWidth = 80;        // Ñ¡Ôñ¿ò¿í¶È
-    const int choiceHeight = 40;       // Ñ¡Ôñ¿ò¸ß¶È
+    // å®šä¹‰é€‰æ‹©åŒºåŸŸ
+    const int choiceBoxY = 450;        // é€‰æ‹©æ¡†Yåæ ‡
+    const int choiceYesX = 250;        // "æ˜¯"æŒ‰é’®Xåæ ‡
+    const int choiceNoX = 350;         // "å¦"æŒ‰é’®Xåæ ‡
+    const int choiceWidth = 80;        // é€‰æ‹©æ¡†å®½åº¦
+    const int choiceHeight = 40;       // é€‰æ‹©æ¡†é«˜åº¦
 
-    bool selectedCards[5] = { false }; // ´æ´¢ÒÑÑ¡ÔñµÄÅÆË÷Òı£¨0-4ÎªÊÖÅÆ£©
-    bool choiceMade = false;           // ÊÇ·ñÒÑ×ö³öÑ¡Ôñ
-    bool hasSelected = false;          // ¼ì²éÊÇ·ñÓĞÑ¡ÖĞµÄÅÆ
-    int hoveredChoice = 0;             // 0:ÎŞĞüÍ£, 1:ÊÇ, 2:·ñ
+    bool selectedCards[5] = { false }; // å­˜å‚¨å·²é€‰æ‹©çš„ç‰Œç´¢å¼•ï¼ˆ0-4ä¸ºæ‰‹ç‰Œï¼‰
+    bool choiceMade = false;           // æ˜¯å¦å·²åšå‡ºé€‰æ‹©
+    bool hasSelected = false;          // æ£€æŸ¥æ˜¯å¦æœ‰é€‰ä¸­çš„ç‰Œ
+    int hoveredChoice = 0;             // 0:æ— æ‚¬åœ, 1:æ˜¯, 2:å¦
 
-    // »æÖÆ"ÊÇ·ñ»»ÅÆ£¿"
+    // ç»˜åˆ¶"æ˜¯å¦æ¢ç‰Œï¼Ÿ"
     settextcolor(RGB(255, 255, 255));
-    settextstyle(30, 0, _T("ºÚÌå"));
-    outtextxy(200, choiceBoxY - 40, _T("ÊÇ·ñ»»ÅÆ£¿"));
+    settextstyle(30, 0, _T("é»‘ä½“"));
+    outtextxy(200, choiceBoxY - 40, _T("æ˜¯å¦æ¢ç‰Œï¼Ÿ"));
 
-    // »æÖÆÑ¡Ôñ°´Å¥
-    drawChoiceButton(choiceYesX, choiceBoxY, choiceWidth, choiceHeight, _T("ÊÇ"), hoveredChoice == 1);
-    drawChoiceButton(choiceNoX, choiceBoxY, choiceWidth, choiceHeight, _T("·ñ"), hoveredChoice == 2);
+    // ç»˜åˆ¶é€‰æ‹©æŒ‰é’®
+    drawChoiceButton(choiceYesX, choiceBoxY, choiceWidth, choiceHeight, _T("æ˜¯"), hoveredChoice == 1);
+    drawChoiceButton(choiceNoX, choiceBoxY, choiceWidth, choiceHeight, _T("å¦"), hoveredChoice == 2);
 
-    // »æÖÆÌáÊ¾ÎÄ×Ö
+    // ç»˜åˆ¶æç¤ºæ–‡å­—
     settextcolor(RGB(255, 255, 255));
-    settextstyle(20, 0, _T("ºÚÌå"));
-    outtextxy(200, choiceBoxY + 50, _T("µã»÷ÊÖÅÆÑ¡ÔñÒª¸ü»»µÄÅÆ"));
+    settextstyle(20, 0, _T("é»‘ä½“"));
+    outtextxy(200, choiceBoxY + 50, _T("ç‚¹å‡»æ‰‹ç‰Œé€‰æ‹©è¦æ›´æ¢çš„ç‰Œ"));
 
     FlushBatchDraw();
 
     ExMessage msg;
-    int lastHoveredChoice = 0; //Êó±êÉÏÒ»¿ÌĞüÍ£Î»ÖÃ
-    int clickedCardIndex = -1; //±»µã»÷µÄÅÆ
+    int lastHoveredChoice = 0; //é¼ æ ‡ä¸Šä¸€åˆ»æ‚¬åœä½ç½®
+    int clickedCardIndex = -1; //è¢«ç‚¹å‡»çš„ç‰Œ
     while (!choiceMade) {
         
-        // ´¦ÀíËùÓĞÏûÏ¢
+        // å¤„ç†æ‰€æœ‰æ¶ˆæ¯
         while (peekmessage(&msg, EM_MOUSE )) {
             switch (msg.message) {
             case WM_MOUSEMOVE:
-                // ¼ì²éÊó±êÊÇ·ñĞüÍ£ÔÚÑ¡Ôñ°´Å¥ÉÏ
+                // æ£€æŸ¥é¼ æ ‡æ˜¯å¦æ‚¬åœåœ¨é€‰æ‹©æŒ‰é’®ä¸Š
                 lastHoveredChoice = hoveredChoice;
                 hoveredChoice = 0;
 
-                // ¼ì²é"ÊÇ"°´Å¥
+                // æ£€æŸ¥"æ˜¯"æŒ‰é’®
                 if (msg.x >= choiceYesX && msg.x <= choiceYesX + choiceWidth &&
                     msg.y >= choiceBoxY && msg.y <= choiceBoxY + choiceHeight) {
                     hoveredChoice = 1;
                 }
-                // ¼ì²é"·ñ"°´Å¥
+                // æ£€æŸ¥"å¦"æŒ‰é’®
                 else if (msg.x >= choiceNoX && msg.x <= choiceNoX + choiceWidth &&
                     msg.y >= choiceBoxY && msg.y <= choiceBoxY + choiceHeight) {
                     hoveredChoice = 2;
                 }
 
-                // Èç¹ûĞüÍ£×´Ì¬¸Ä±ä£¬ÖØ»æ°´Å¥
+                // å¦‚æœæ‚¬åœçŠ¶æ€æ”¹å˜ï¼Œé‡ç»˜æŒ‰é’®
                 if (hoveredChoice != lastHoveredChoice) {
                     drawChoiceButton(choiceYesX, choiceBoxY, choiceWidth, choiceHeight,
-                        _T("ÊÇ"), hoveredChoice == 1);
+                        _T("æ˜¯"), hoveredChoice == 1);
                     drawChoiceButton(choiceNoX, choiceBoxY, choiceWidth, choiceHeight,
-                        _T("·ñ"), hoveredChoice == 2);
+                        _T("å¦"), hoveredChoice == 2);
                 }
                 break;
 
             case WM_LBUTTONDOWN:
-                // ¼ì²éÊÇ·ñµã»÷ÁËÊÖÅÆÇøÓò
+                // æ£€æŸ¥æ˜¯å¦ç‚¹å‡»äº†æ‰‹ç‰ŒåŒºåŸŸ
                 if (msg.y >= playerHandY && msg.y <= playerHandY + cardHeight) {
-                    // ÕÒ³öµã»÷µÄÊÇÄÄÕÅÅÆ
+                    // æ‰¾å‡ºç‚¹å‡»çš„æ˜¯å“ªå¼ ç‰Œ
                     for (int i = 0; i < 5; i++) {
                         int cardX = playerHandStartX + i * 100;
                         if (msg.x >= cardX && msg.x <= cardX + cardWidth) {
                             clickedCardIndex = i;
                             break;
                         }
-                    }//ÓĞÅÆ±»µã»÷
+                    }//æœ‰ç‰Œè¢«ç‚¹å‡»
                     if (clickedCardIndex != -1) {
-                        // Èç¹ûµã»÷µÄÅÆÒÑ¾­±»Ñ¡ÖĞ£¬ÔòÈ¡ÏûÑ¡ÖĞ
+                        // å¦‚æœç‚¹å‡»çš„ç‰Œå·²ç»è¢«é€‰ä¸­ï¼Œåˆ™å–æ¶ˆé€‰ä¸­
                         if (selectedCards[clickedCardIndex]) {
                             selectedCards[clickedCardIndex] = false;
                             hasSelected = false;
-                            // ÖØ»æµã»÷µÄÅÆ£¨È¥µôÑ¡Ôñ¿ò£©
+                            // é‡ç»˜ç‚¹å‡»çš„ç‰Œï¼ˆå»æ‰é€‰æ‹©æ¡†ï¼‰
                             drawSelectedFrame(clickedCardIndex,
                                 playerHandStartX + clickedCardIndex * 100, playerHandY,
                                 &player->hand[clickedCardIndex], false);
                             FlushBatchDraw();
                         }
-                        // Èç¹ûµã»÷µÄÅÆÎ´±»Ñ¡ÖĞ£¬ÔòÏÈÈ¡ÏûËùÓĞÅÆµÄÑ¡Ôñ£¬ÔÙÑ¡ÖĞÕâÕÅ
+                        // å¦‚æœç‚¹å‡»çš„ç‰Œæœªè¢«é€‰ä¸­ï¼Œåˆ™å…ˆå–æ¶ˆæ‰€æœ‰ç‰Œçš„é€‰æ‹©ï¼Œå†é€‰ä¸­è¿™å¼ 
                         else {
-                            // ÏÈÈ¡ÏûËùÓĞÅÆµÄÑ¡ÖĞ×´Ì¬
+                            // å…ˆå–æ¶ˆæ‰€æœ‰ç‰Œçš„é€‰ä¸­çŠ¶æ€
                             for (int i = 0; i < 5; i++) {
                                 if (selectedCards[i]) {
                                     selectedCards[i] = false;
-                                    // ÖØ»æ¸ÃÅÆ£¨È¥µôÑ¡Ôñ¿ò£©
+                                    // é‡ç»˜è¯¥ç‰Œï¼ˆå»æ‰é€‰æ‹©æ¡†ï¼‰
                                     drawSelectedFrame(i, playerHandStartX + i * 100,
                                         playerHandY, &player->hand[i], false);
                                     FlushBatchDraw();
                                 }
                             }
-                            // Ñ¡ÖĞµã»÷µÄÅÆ
+                            // é€‰ä¸­ç‚¹å‡»çš„ç‰Œ
                             selectedCards[clickedCardIndex] = true;
                             hasSelected = true;
 
-                            // Ö»ÓĞÑ¡ÖĞĞÂÅÆÊ±²Å»æÖÆÑ¡ÖĞ¿ò
+                            // åªæœ‰é€‰ä¸­æ–°ç‰Œæ—¶æ‰ç»˜åˆ¶é€‰ä¸­æ¡†
                             drawSelectedFrame(clickedCardIndex,
                                 playerHandStartX + clickedCardIndex * 100, playerHandY,
                                 &player->hand[clickedCardIndex], true);
@@ -323,9 +322,9 @@ bool playerReplaceCard(Player* player, Deck *deck) {
                         }
                     }
                 }
-                // ¼ì²éÊÇ·ñµã»÷ÁËÑ¡Ôñ°´Å¥
-                if (hoveredChoice == 1) {  // µã»÷"ÊÇ"
-                    // ¼ì²éÊÇ·ñÓĞÑ¡ÖĞµÄÅÆ
+                // æ£€æŸ¥æ˜¯å¦ç‚¹å‡»äº†é€‰æ‹©æŒ‰é’®
+                if (hoveredChoice == 1) {  // ç‚¹å‡»"æ˜¯"
+                    // æ£€æŸ¥æ˜¯å¦æœ‰é€‰ä¸­çš„ç‰Œ
                     for (int i = 0; i < 5; i++) {
                         if (selectedCards[i]) {
                             hasSelected = true;
@@ -334,7 +333,7 @@ bool playerReplaceCard(Player* player, Deck *deck) {
                     }
 
                     if (hasSelected) {
-                        // Ö´ĞĞ»»ÅÆÂß¼­
+                        // æ‰§è¡Œæ¢ç‰Œé€»è¾‘
                         player->hand[clickedCardIndex] = dealCard(deck);
                         player->hand[clickedCardIndex].visible = true;
                         isreplace = true;
@@ -342,18 +341,18 @@ bool playerReplaceCard(Player* player, Deck *deck) {
                     }
                     else {
                         choiceMade = false;
-                        // ÏÔÊ¾ÌáÊ¾£ºÇëÑ¡ÔñÒª¸ü»»µÄÅÆ
+                        // æ˜¾ç¤ºæç¤ºï¼šè¯·é€‰æ‹©è¦æ›´æ¢çš„ç‰Œ
                         settextcolor(RGB(255, 100, 100));
-                        settextstyle(20, 0, _T("ºÚÌå"));
-                        outtextxy(800, choiceBoxY + 80, _T("ÇëÏÈÑ¡ÔñÒª¸ü»»µÄÅÆ"));
-                        Sleep(1500);  // ÏÔÊ¾ÌáÊ¾1.5Ãë
+                        settextstyle(20, 0, _T("é»‘ä½“"));
+                        outtextxy(800, choiceBoxY + 80, _T("è¯·å…ˆé€‰æ‹©è¦æ›´æ¢çš„ç‰Œ"));
+                        Sleep(1500);  // æ˜¾ç¤ºæç¤º1.5ç§’
 
-                        // Çå³ıÌáÊ¾
+                        // æ¸…é™¤æç¤º
                         setfillcolor(RGB(49, 78, 22));
                         solidrectangle(800, choiceBoxY + 80, 1000, choiceBoxY + 110);
                     }
                 }
-                else if (hoveredChoice == 2) {  // µã»÷"·ñ"
+                else if (hoveredChoice == 2) {  // ç‚¹å‡»"å¦"
                     choiceMade = true;
                 }
                 break;
@@ -361,90 +360,91 @@ bool playerReplaceCard(Player* player, Deck *deck) {
             }
         }
 
-        // ±ÜÃâCPUÕ¼ÓÃ¹ı¸ß
+        // é¿å…CPUå ç”¨è¿‡é«˜
         Sleep(10);
     }
-    //Çå³ıÑ¡Ôñ°´Å¥
+    //æ¸…é™¤é€‰æ‹©æŒ‰é’®
     clearChoiceButton(choiceYesX, choiceBoxY, choiceWidth, choiceHeight);
     clearChoiceButton(choiceNoX, choiceBoxY, choiceWidth, choiceHeight);
-    //Çå³ıÌáÊ¾ÎÄ×Ö
+    //æ¸…é™¤æç¤ºæ–‡å­—
     setfillcolor(RGB(49, 78, 22));
-    settextstyle(20, 0, _T("ºÚÌå"));
-    solidrectangle(200, choiceBoxY - 40, 200 + textwidth(_T("µã»÷ÊÖÅÆÑ¡ÔñÒª¸ü»»µÄÅÆ")), choiceBoxY + 70);
+    settextstyle(20, 0, _T("é»‘ä½“"));
+    solidrectangle(200, choiceBoxY - 40, 200 + textwidth(_T("ç‚¹å‡»æ‰‹ç‰Œé€‰æ‹©è¦æ›´æ¢çš„ç‰Œ")), choiceBoxY + 70);
     return isreplace;
 }
 
-// Ì¯ÅÆ½×¶Î
+// æ‘Šç‰Œé˜¶æ®µ
 int Showdown(PokerGame* game,Player* player, Deck* deck) {
-    //×îÖÕµÃ·Ö
-    int score = 0;
-   //ÁÙÊ±ÅÆ×é£¨¼Æ·ÖÓÃ
+    //æœ€ç»ˆå¾—åˆ†
+    static int score;
+    score = 0;
+   //ä¸´æ—¶ç‰Œç»„ï¼ˆè®¡åˆ†ç”¨
     Card temp[5] ;  
     temp[0] = game->communityCards[0];
     temp[1] = game->communityCards[1];
 
-    // ¶¨ÒåÊÖÅÆÇøÓòºÍ¹«¹²ÅÆÇøÓò
-    const int playerHandStartX = 150;  // Íæ¼ÒÊÖÅÆÆğÊ¼X×ø±ê
-    const int playerHandY = 530;       // Íæ¼ÒÊÖÅÆY×ø±ê
-    const int cardWidth = 80;          // ÅÆ¿í¶È
-    const int cardHeight = 120;        // ÅÆ¸ß¶È
-    // ¶¨ÒåÑ¡ÔñÇøÓò
-    const int choiceBoxY = 450;        // Ñ¡Ôñ¿òY×ø±ê
-    const int choiceConfirmX = 350;     // È·ÈÏ°´Å¥X×ø±ê
-    const int choiceWidth = 80;        // Ñ¡Ôñ¿ò¿í¶È
-    const int choiceHeight = 40;       // Ñ¡Ôñ¿ò¸ß¶È
+    // å®šä¹‰æ‰‹ç‰ŒåŒºåŸŸå’Œå…¬å…±ç‰ŒåŒºåŸŸ
+    const int playerHandStartX = 150;  // ç©å®¶æ‰‹ç‰Œèµ·å§‹Xåæ ‡
+    const int playerHandY = 530;       // ç©å®¶æ‰‹ç‰ŒYåæ ‡
+    const int cardWidth = 80;          // ç‰Œå®½åº¦
+    const int cardHeight = 120;        // ç‰Œé«˜åº¦
+    // å®šä¹‰é€‰æ‹©åŒºåŸŸ
+    const int choiceBoxY = 450;        // é€‰æ‹©æ¡†Yåæ ‡
+    const int choiceConfirmX = 350;     // ç¡®è®¤æŒ‰é’®Xåæ ‡
+    const int choiceWidth = 80;        // é€‰æ‹©æ¡†å®½åº¦
+    const int choiceHeight = 40;       // é€‰æ‹©æ¡†é«˜åº¦
     //
-    bool selectedCards[5] = { false }; // ´æ´¢ÒÑÑ¡ÔñµÄÅÆË÷Òı
-    bool choiceMade = false;           // ÊÇ·ñÒÑ×ö³öÑ¡Ôñ
-    int selectedCount = 0;             // µ±Ç°Ñ¡ÖĞµÄÅÆÊı
-    int lastIndex = -1;                //ÉÏÕÅÑ¡ÖĞµÄÅÆ
-    int hoveredChoice = 0;             // 0:ÎŞĞüÍ£, 1:È·¶¨
+    bool selectedCards[5] = { false }; // å­˜å‚¨å·²é€‰æ‹©çš„ç‰Œç´¢å¼•
+    bool choiceMade = false;           // æ˜¯å¦å·²åšå‡ºé€‰æ‹©
+    int selectedCount = 0;             // å½“å‰é€‰ä¸­çš„ç‰Œæ•°
+    int lastIndex = -1;                //ä¸Šå¼ é€‰ä¸­çš„ç‰Œ
+    int hoveredChoice = 0;             // 0:æ— æ‚¬åœ, 1:ç¡®å®š
 
-    // »æÖÆ"ÇëÑ¡ÔñÒªÕ¹Ê¾µÄÅÆ"
+    // ç»˜åˆ¶"è¯·é€‰æ‹©è¦å±•ç¤ºçš„ç‰Œ"
     settextcolor(RGB(255, 255, 255));
-    settextstyle(30, 0, _T("ºÚÌå"));
-    outtextxy(200, choiceBoxY - 40, _T("ÇëÑ¡ÔñÒªÕ¹Ê¾µÄÅÆ"));
+    settextstyle(30, 0, _T("é»‘ä½“"));
+    outtextxy(200, choiceBoxY - 40, _T("è¯·é€‰æ‹©è¦å±•ç¤ºçš„ç‰Œ"));
 
-    // »æÖÆÑ¡Ôñ°´Å¥
-    drawChoiceButton(choiceConfirmX, choiceBoxY, choiceWidth, choiceHeight, _T("È·¶¨"), hoveredChoice == 1);
+    // ç»˜åˆ¶é€‰æ‹©æŒ‰é’®
+    drawChoiceButton(choiceConfirmX, choiceBoxY, choiceWidth, choiceHeight, _T("ç¡®å®š"), hoveredChoice == 1);
 
-    // »æÖÆÌáÊ¾ÎÄ×Ö
+    // ç»˜åˆ¶æç¤ºæ–‡å­—
     settextcolor(RGB(255, 255, 255));
-    settextstyle(20, 0, _T("ºÚÌå"));
-    outtextxy(200, choiceBoxY + 50, _T("µã»÷ÊÖÅÆ½øĞĞÑ¡Ôñ"));
+    settextstyle(20, 0, _T("é»‘ä½“"));
+    outtextxy(200, choiceBoxY + 50, _T("ç‚¹å‡»æ‰‹ç‰Œè¿›è¡Œé€‰æ‹©"));
     FlushBatchDraw();
 
     ExMessage msg;
-    int lastHoveredChoice = 0; //Êó±êÉÏÒ»¿ÌĞüÍ£Î»ÖÃ
-    int clickedCardIndex = -1; //±»µã»÷µÄÅÆ
+    int lastHoveredChoice = 0; //é¼ æ ‡ä¸Šä¸€åˆ»æ‚¬åœä½ç½®
+    int clickedCardIndex = -1; //è¢«ç‚¹å‡»çš„ç‰Œ
 
     while (!choiceMade) {
 
-        // ´¦ÀíËùÓĞÏûÏ¢
+        // å¤„ç†æ‰€æœ‰æ¶ˆæ¯
         while (peekmessage(&msg, EM_MOUSE)) {
             switch (msg.message) {
             case WM_MOUSEMOVE:
-                // ¼ì²éÊó±êÊÇ·ñĞüÍ£ÔÚÑ¡Ôñ°´Å¥ÉÏ
+                // æ£€æŸ¥é¼ æ ‡æ˜¯å¦æ‚¬åœåœ¨é€‰æ‹©æŒ‰é’®ä¸Š
                 lastHoveredChoice = hoveredChoice;
                 hoveredChoice = 0;
 
-                // ¼ì²é"È·ÈÏ"°´Å¥
+                // æ£€æŸ¥"ç¡®è®¤"æŒ‰é’®
                 if (msg.x >= choiceConfirmX && msg.x <= choiceConfirmX + choiceWidth &&
                     msg.y >= choiceBoxY && msg.y <= choiceBoxY + choiceHeight) {
                     hoveredChoice = 1;
                 }
 
-                // Èç¹ûĞüÍ£×´Ì¬¸Ä±ä£¬ÖØ»æ°´Å¥
+                // å¦‚æœæ‚¬åœçŠ¶æ€æ”¹å˜ï¼Œé‡ç»˜æŒ‰é’®
                 if (hoveredChoice != lastHoveredChoice) {
                     drawChoiceButton(choiceConfirmX, choiceBoxY, choiceWidth, choiceHeight,
-                        _T("È·¶¨"), hoveredChoice == 1);
+                        _T("ç¡®å®š"), hoveredChoice == 1);
                 }
                 break;
 
             case WM_LBUTTONDOWN:
-                // ¼ì²éÊÇ·ñµã»÷ÁËÊÖÅÆÇøÓò
+                // æ£€æŸ¥æ˜¯å¦ç‚¹å‡»äº†æ‰‹ç‰ŒåŒºåŸŸ
                 if (msg.y >= playerHandY && msg.y <= playerHandY + cardHeight) {
-                    // ÕÒ³öµã»÷µÄÊÇÄÄÕÅÅÆ
+                    // æ‰¾å‡ºç‚¹å‡»çš„æ˜¯å“ªå¼ ç‰Œ
                     for (int i = 0; i < 5; i++) {
                         int cardX = playerHandStartX + i * 100;
                         if (msg.x >= cardX && msg.x <= cardX + cardWidth) {
@@ -452,38 +452,38 @@ int Showdown(PokerGame* game,Player* player, Deck* deck) {
                             break;
                         }
                     }
-                    // ÓĞÅÆ±»µã»÷
+                    // æœ‰ç‰Œè¢«ç‚¹å‡»
                     if (clickedCardIndex != -1) {
-                        // Èç¹ûµã»÷µÄÅÆÒÑ¾­±»Ñ¡ÖĞ£¬ÔòÈ¡ÏûÑ¡ÖĞ
+                        // å¦‚æœç‚¹å‡»çš„ç‰Œå·²ç»è¢«é€‰ä¸­ï¼Œåˆ™å–æ¶ˆé€‰ä¸­
                         if (selectedCards[clickedCardIndex]) {
                             selectedCards[clickedCardIndex] = false;
                             selectedCount--;
-                            // ÖØ»æµã»÷µÄÅÆ£¨È¥µôÑ¡Ôñ¿ò£©
+                            // é‡ç»˜ç‚¹å‡»çš„ç‰Œï¼ˆå»æ‰é€‰æ‹©æ¡†ï¼‰
                             drawSelectedFrame(clickedCardIndex,
                                 playerHandStartX + clickedCardIndex * 100, playerHandY,
                                 &player->hand[clickedCardIndex], false);
                             FlushBatchDraw();
                         }
-                        // Èç¹ûµã»÷µÄÅÆÎ´±»Ñ¡ÖĞ
+                        // å¦‚æœç‚¹å‡»çš„ç‰Œæœªè¢«é€‰ä¸­
                         else {
-                            // Èç¹ûÒÑ¾­Ñ¡ÖĞÁË3ÕÅÅÆ£¬ĞèÒªÈ¡Ïû×îÔçÑ¡ÖĞµÄÒ»ÕÅ
+                            // å¦‚æœå·²ç»é€‰ä¸­äº†3å¼ ç‰Œï¼Œéœ€è¦å–æ¶ˆæœ€æ—©é€‰ä¸­çš„ä¸€å¼ 
                             if (selectedCount >= 3) {
-                                // ÕÒµ½µÚÒ»¸ö±»Ñ¡ÖĞµÄÅÆ²¢È¡ÏûÑ¡ÖĞ
+                                // æ‰¾åˆ°ç¬¬ä¸€ä¸ªè¢«é€‰ä¸­çš„ç‰Œå¹¶å–æ¶ˆé€‰ä¸­
                                 for (int i = 0; i < 5; i++) {
                                     if (selectedCards[i]) {
                                         selectedCards[i] = false;
                                         selectedCount--;
-                                        // ÖØ»æ±»È¡ÏûÑ¡ÖĞµÄÅÆ£¨È¥µôÑ¡Ôñ¿ò£©
+                                        // é‡ç»˜è¢«å–æ¶ˆé€‰ä¸­çš„ç‰Œï¼ˆå»æ‰é€‰æ‹©æ¡†ï¼‰
                                         drawSelectedFrame(i, playerHandStartX + i * 100,
                                             playerHandY, &player->hand[i], false);
                                         break;
                                     }
                                 }
                             }
-                            // Ñ¡ÖĞµ±Ç°µã»÷µÄÅÆ
+                            // é€‰ä¸­å½“å‰ç‚¹å‡»çš„ç‰Œ
                             selectedCards[clickedCardIndex] = true;
                             selectedCount++;
-                            // »æÖÆÑ¡ÖĞ¿ò
+                            // ç»˜åˆ¶é€‰ä¸­æ¡†
                             drawSelectedFrame(clickedCardIndex,
                                 playerHandStartX + clickedCardIndex * 100, playerHandY,
                                 &player->hand[clickedCardIndex], true);
@@ -491,30 +491,30 @@ int Showdown(PokerGame* game,Player* player, Deck* deck) {
                         }
                     }
                 }
-                // ¼ì²éÊÇ·ñµã»÷ÁËÑ¡Ôñ°´Å¥
-                if (hoveredChoice == 1) {  // µã»÷"ÊÇ"
-                    // ¼ì²éÊÇ·ñÓĞÑ¡ÖĞ3ÕÅÅÆ
+                // æ£€æŸ¥æ˜¯å¦ç‚¹å‡»äº†é€‰æ‹©æŒ‰é’®
+                if (hoveredChoice == 1) {  // ç‚¹å‡»"æ˜¯"
+                    // æ£€æŸ¥æ˜¯å¦æœ‰é€‰ä¸­3å¼ ç‰Œ
                     if (selectedCount == 3) {
                         int cardIndex = 2;
                         for (int i = 0; i < 5; i++) {
-                            if (selectedCards[i]) {//¸ÃÅÆ±»Ñ¡ÖĞ
-                                temp[cardIndex] = player->hand[i]; //¸üĞÂÁÙÊ±ÅÆ×é
+                            if (selectedCards[i]) {//è¯¥ç‰Œè¢«é€‰ä¸­
+                                temp[cardIndex] = player->hand[i]; //æ›´æ–°ä¸´æ—¶ç‰Œç»„
                                 cardIndex++;
-                                player->hand[i] = dealCard(deck);//ÏÈ°ÑÅÆ·¢ÁË
+                                player->hand[i] = dealCard(deck);//å…ˆæŠŠç‰Œå‘äº†
                             }
                         }
                         choiceMade = true;
                             break;
-                    }//Ã»Ñ¡¹»3ÕÅ
+                    }//æ²¡é€‰å¤Ÿ3å¼ 
                     else {
                         choiceMade = false;
-                        // ÏÔÊ¾ÌáÊ¾£ºÇëÑ¡ÔñÒª¸ü»»µÄÅÆ
+                        // æ˜¾ç¤ºæç¤ºï¼šè¯·é€‰æ‹©è¦æ›´æ¢çš„ç‰Œ
                         settextcolor(RGB(255, 100, 100));
-                        settextstyle(20, 0, _T("ºÚÌå"));
-                        outtextxy(800, choiceBoxY + 80, _T("ÇëÏÈÑ¡ÔñÒªÕ¹Ê¾µÄÅÆ"));
-                        Sleep(1500);  // ÏÔÊ¾ÌáÊ¾1.5Ãë
+                        settextstyle(20, 0, _T("é»‘ä½“"));
+                        outtextxy(800, choiceBoxY + 80, _T("è¯·å…ˆé€‰æ‹©è¦å±•ç¤ºçš„ç‰Œ"));
+                        Sleep(1500);  // æ˜¾ç¤ºæç¤º1.5ç§’
 
-                        // Çå³ıÌáÊ¾
+                        // æ¸…é™¤æç¤º
                         setfillcolor(RGB(49, 78, 22));
                         solidrectangle(800, choiceBoxY + 80, 1000, choiceBoxY + 110);
                     }
@@ -522,27 +522,27 @@ int Showdown(PokerGame* game,Player* player, Deck* deck) {
                 break;
             }
         }
-        // ±ÜÃâCPUÕ¼ÓÃ¹ı¸ß
+        // é¿å…CPUå ç”¨è¿‡é«˜
         Sleep(10);
     }
-    //Çå³ı±»Ñ¡ÖĞµÄÊÖÅÆ
+    //æ¸…é™¤è¢«é€‰ä¸­çš„æ‰‹ç‰Œ
     for (int i = 0; i < 5; i++) {
-        if (selectedCards[i]) {//¸ÃÅÆ±»Ñ¡ÖĞ
+        if (selectedCards[i]) {//è¯¥ç‰Œè¢«é€‰ä¸­
             setfillcolor(RGB(49, 78, 22));
             solidrectangle(100 * i + 150, 527, 100 * i + 230,650);
-            //Çå³ıÑ¡ÖĞ¿ò
+            //æ¸…é™¤é€‰ä¸­æ¡†
             drawSelectedFrame(i, playerHandStartX + i * 100,
                 playerHandY, &player->hand[i], false);
         }
     }
-    //Çå³ıÑ¡Ôñ°´Å¥
+    //æ¸…é™¤é€‰æ‹©æŒ‰é’®
     clearChoiceButton(choiceConfirmX, choiceBoxY, choiceWidth, choiceHeight);
-    //Çå³ıÌáÊ¾ÎÄ×Ö
+    //æ¸…é™¤æç¤ºæ–‡å­—
     setfillcolor(RGB(49, 78, 22));
-    settextstyle(20, 0, _T("ºÚÌå"));
-    solidrectangle(200, choiceBoxY - 40, 220 + textwidth(_T("µã»÷ÊÖÅÆÑ¡ÔñÒª¸ü»»µÄÅÆ")), choiceBoxY + 70);
-
-    //°ÑÑ¡ÖĞµÄÅÆÕ¹Ê¾µ½¹«¹²ÅÆÅÔ±ß
+    settextstyle(20, 0, _T("é»‘ä½“"));
+    solidrectangle(200, choiceBoxY - 40, 220 + textwidth(_T("ç‚¹å‡»æ‰‹ç‰Œé€‰æ‹©è¦æ›´æ¢çš„ç‰Œ")), choiceBoxY + 70);
+    
+    //æŠŠé€‰ä¸­çš„ç‰Œå±•ç¤ºåˆ°å…¬å…±ç‰Œæ—è¾¹
     for (int i = 2; i < 5; i++) {
         drawCardAt(150+i*100, 220, &temp[i]);
     }
@@ -552,56 +552,56 @@ int Showdown(PokerGame* game,Player* player, Deck* deck) {
     return score;
 }
 
- //Íæ¼ÒÆúÅÆ
+ //ç©å®¶å¼ƒç‰Œ
 void playerFoldCard(Player* player, PokerGame* game) {
     player->chips -= 5;
     game->pot += 5;
     player->isActive = false;
-    // ÊÖÅÆÊı×éÌî³äÎªÎŞĞ§Öµ»òÌØÊâ±ê¼Ç
+    // æ‰‹ç‰Œæ•°ç»„å¡«å……ä¸ºæ— æ•ˆå€¼æˆ–ç‰¹æ®Šæ ‡è®°
     for (int i = 0; i < 5; i++) {
-        player->hand[i].suit = NONE;  // ÎŞĞ§»¨É«
+        player->hand[i].suit = NONE;  // æ— æ•ˆèŠ±è‰²
         player->hand[i].visible = false;
     }
 }
 
-// ¸üĞÂÍæ¼Ò³ïÂëÊıÏÔÊ¾
+// æ›´æ–°ç©å®¶ç­¹ç æ•°æ˜¾ç¤º
 void UpdateChipsDisplay(PokerGame* game) {
-    //¸²¸ÇÖ®Ç°µÄÊı¾İµÄ¾ØĞÎÑÕÉ«
+    //è¦†ç›–ä¹‹å‰çš„æ•°æ®çš„çŸ©å½¢é¢œè‰²
     setfillcolor(RGB(49, 78, 22));
-    //×ÖÌåÉèÖÃ
+    //å­—ä½“è®¾ç½®
     settextcolor(RGB(252, 251, 159));
-    settextstyle(30, 0, _T("ºÚÌå"));
-    //¶¥²¿Íæ¼Ò
-    int x = textwidth(_T("Íæ¼Ò2"));
+    settextstyle(30, 0, _T("é»‘ä½“"));
+    //é¡¶éƒ¨ç©å®¶
+    int x = textwidth(_T("ç©å®¶2"));
     int x2 = x + 130;
-    int x3 = textwidth(_T("³ïÂë:"));
+    int x3 = textwidth(_T("ç­¹ç :"));
     for (int i = 1; i < game->playerCount; i++) {
-        if (!game->players[i].isOut) {//Íæ¼ÒÎ´±»ÌÔÌ­
-            //¸²¸Ç¾ØĞÎ
+        if (!game->players[i].isOut) {//ç©å®¶æœªè¢«æ·˜æ±°
+            //è¦†ç›–çŸ©å½¢
             solidrectangle(100 + x2 * (i - 1), 70, 100 + x2 * (i - 1) + x3, 100);
-            //Íæ¼Ò³ïÂëÊı
+            //ç©å®¶ç­¹ç æ•°
             TCHAR playerChips[10];
             _stprintf_s(playerChips, 10, _T("%d"), game->players[i].chips);
             outtextxy(100 + x2 * (i - 1), 70, playerChips);
         }
     }
 
-    //µ×²¿Íæ¼Ò
+    //åº•éƒ¨ç©å®¶
     solidrectangle(25, 605, 150, 640);
-    settextstyle(35, 0, _T("ºÚÌå"));
+    settextstyle(35, 0, _T("é»‘ä½“"));
     TCHAR playerChips[10];
     _stprintf_s(playerChips, 10, _T("%d"), game->players[game->bottomPlayer].chips);
     outtextxy(25, 605, playerChips);
 
-    //µ×³Ø
-    settextstyle(30, 0, _T("ºÚÌå"));
-    solidrectangle(880, 250, 910, 280);
+    //åº•æ± 
+    settextstyle(30, 0, _T("é»‘ä½“"));
+    solidrectangle(880, 250, 930, 280);
     TCHAR currentPot[20];
     _stprintf_s(currentPot, 20, _T("%d"), game->pot);
     outtextxy(880, 250, currentPot);
 
-    //ÏÂ×¢
-    solidrectangle(880, 310, 910, 340);
+    //ä¸‹æ³¨
+    solidrectangle(880, 310, 930, 340);
     TCHAR currentBet[20];
     _stprintf_s(currentBet, 20, _T("%d"), game->currentBet);
     outtextxy(880, 310, currentBet);
@@ -609,51 +609,52 @@ void UpdateChipsDisplay(PokerGame* game) {
     FlushBatchDraw();
 }
 
-//³õÊ¼»¯ÓÎÏ·
+//åˆå§‹åŒ–æ¸¸æˆ
 void initGame(PokerGame* game,Deck* deck) {
-    //Íæ¼Ò³õÊ¼»¯
+    //ç©å®¶åˆå§‹åŒ–
     for (int i = 0; i < game->playerCount; i++) {
         char name[50];
         if (i < game->humanCount) {
-            sprintf_s(name, sizeof(name), "Íæ¼Ò%d", i + 1);
+            sprintf_s(name, sizeof(name), "ç©å®¶%d", i + 1);
             initPlayer(&game->players[i], name, HUMAN);
         }
         else {
-            sprintf_s(name, sizeof(name), "µçÄÔ%d", i + 1 - game->humanCount);
+            sprintf_s(name, sizeof(name), "ç”µè„‘%d", i + 1 - game->humanCount);
             initPlayer(&game->players[i], name, AI);
         }
-        //¸øÍæ¼Ò·¢ÅÆ
+        //ç»™ç©å®¶å‘ç‰Œ
         dealCardsToPlayer(&game->players[i], deck, 5);
     }
-    //³õÊ¼¹«¹²ÅÆ
+    //åˆå§‹å…¬å…±ç‰Œ
     for (int i = 0; i < 2; i++) {
         game->communityCards[i] = dealCard(deck);
     }
-    game->communityCards[0].visible = true;//µÚÒ»ÕÅ¹«¹²ÅÆ¿É¼û
-    game->currentPlayer = 0;  //µÚÒ»ÃûÍæ¼ÒÏÈĞĞ¶¯
-    game->bottomPlayer = 0;   //µ×²¿Íæ¼Ò
-    game->currentBet = 0;     //µ±Ç°×î¸ßÏÂ×¢Îª0 
-    game->pot = 0;            //³õÊ¼µ×³ØÎª0
-    game->phase = GAME_START; //³õÊ¼ÓÎÏ·½×¶Î£º¿ªÊ¼ÓÎÏ·
-    game->allChecked = false; //Íæ¼ÒÃ»ÓĞÈ«²¿Ñ¡Ôñ¹ıÅÆ
+    game->communityCards[0].visible = true;//ç¬¬ä¸€å¼ å…¬å…±ç‰Œå¯è§
+    game->currentPlayer = 0;  //ç¬¬ä¸€åç©å®¶å…ˆè¡ŒåŠ¨
+    game->bottomPlayer = 0;   //åº•éƒ¨ç©å®¶
+    game->currentBet = 0;     //å½“å‰æœ€é«˜ä¸‹æ³¨ä¸º0 
+    game->pot = 0;            //åˆå§‹åº•æ± ä¸º0
+    game->phase = GAME_START; //åˆå§‹æ¸¸æˆé˜¶æ®µï¼šå¼€å§‹æ¸¸æˆ
+    game->allChecked = false; //ç©å®¶æ²¡æœ‰å…¨éƒ¨é€‰æ‹©è¿‡ç‰Œ
+    game->currentRank = game->playerCount;
     for (int i = 0; i < 5; i++) {
         game->players[game->bottomPlayer].hand[i].visible = 1;
     }
 }
 
-//¿ªÊ¼ĞÂÒ»ÂÖÓÎÏ·
+//å¼€å§‹æ–°ä¸€è½®æ¸¸æˆ
 void startNewRound(PokerGame* game, Deck* deck) {
-    //³õÊ¼¹«¹²ÅÆ
+    //åˆå§‹å…¬å…±ç‰Œ
     for (int i = 0; i < 2; i++) {
         game->communityCards[i] = dealCard(deck);
     }
-    game->communityCards[0].visible = true;//µÚÒ»ÕÅ¹«¹²ÅÆ¿É¼û
-    game->currentPlayer = 0;  //µÚÒ»ÃûÍæ¼ÒÏÈĞĞ¶¯
-    game->bottomPlayer = 0;   //µ×²¿Íæ¼Ò
-    game->currentBet = 0;     //µ±Ç°×î¸ßÏÂ×¢Îª0 
-    game->pot = 0;            //³õÊ¼µ×³ØÎª0
-    game->phase = GAME_START; //³õÊ¼ÓÎÏ·½×¶Î£º¿ªÊ¼ÓÎÏ·
-    game->allChecked = false; //Íæ¼ÒÃ»ÓĞÈ«²¿Ñ¡Ôñ¹ıÅÆ
+    game->communityCards[0].visible = true;//ç¬¬ä¸€å¼ å…¬å…±ç‰Œå¯è§
+    game->currentPlayer = 0;  //ç¬¬ä¸€åç©å®¶å…ˆè¡ŒåŠ¨
+    game->bottomPlayer = 0;   //åº•éƒ¨ç©å®¶
+    game->currentBet = 0;     //å½“å‰æœ€é«˜ä¸‹æ³¨ä¸º0 
+    game->pot = 0;            //åˆå§‹åº•æ± ä¸º0
+    game->phase = GAME_START; //åˆå§‹æ¸¸æˆé˜¶æ®µï¼šå¼€å§‹æ¸¸æˆ
+    game->allChecked = false; //ç©å®¶æ²¡æœ‰å…¨éƒ¨é€‰æ‹©è¿‡ç‰Œ
     for (int i = 0; i < 5; i++) {
         game->players[game->bottomPlayer].hand[i].visible = 1;
         if(!game->players[i].isOut){
@@ -661,4 +662,86 @@ void startNewRound(PokerGame* game, Deck* deck) {
             game->players[i].isActive = true;
         }
     }
+}
+
+//AIç›¸å…³
+//äººæœºä¸‹æ³¨å›åˆé€‰é¡¹
+Action AIBetChoice(PokerGame* game, Player* player, bool* isbetting) {
+    int currentCase;
+    static Action action;
+    //å½“å‰è¡ŒåŠ¨çŠ¶æ€
+    //å½“å‰æœªä¸‹æ³¨ä¸”ç©å®¶ç­¹ç è¶³å¤Ÿ
+    if (!*isbetting && player->chips > 10) {
+        currentCase = 0;
+    }//å½“å‰æœªä¸‹æ³¨ä½†ç©å®¶ç­¹ç ä¸è¶³
+    else if (!*isbetting && player->chips <= 10) {
+        currentCase = 1;
+    }//å½“å‰å·²ä¸‹æ³¨ä¸”ç­¹ç è¶³å¤Ÿ
+    else if (*isbetting && player->chips > game->currentBet) {
+        currentCase = 2;
+    }//å½“å‰å·²ä¸‹æ³¨ä½†ç­¹ç ä¸è¶³ä»¥è·Ÿæ³¨
+    else if (*isbetting && player->chips <= game->currentBet) {
+        currentCase = 3;
+    }
+    //æ ¹æ®çŠ¶æ€è¿›è¡Œè¡ŒåŠ¨
+    switch (currentCase) {
+    case 0 ://è‡ªåŠ¨ä¸‹æ³¨
+        action = bet;
+        *isbetting = true;
+        break;
+    case 1://è‡ªåŠ¨å…¨æŠ¼
+        action = allin;
+        break;
+    case 2://éšæœºé€‰æ‹©è·Ÿæ³¨/åŠ æ³¨
+        static int choice ;
+        choice = 0;
+        srand((unsigned int)time(NULL));
+        choice = rand() % 2; //è·Ÿæ³¨0ï¼ŒåŠ æ³¨1
+        if (!choice)
+            action = call;
+        else
+            action = raise;
+        break;
+    case 3://è‡ªåŠ¨å…¨æŠ¼
+        action = allin;
+        break;
+    }
+    return action;
+}
+
+ //äººæœºé€‰ç‰Œ(éšæœºé€‰ä¸‰å¼ 
+int AIShowdown(PokerGame* game, Player* player, Deck* deck) {
+    //æœ€ç»ˆå¾—åˆ†
+    static int score;
+    score = 0;
+    //ä¸´æ—¶ç‰Œç»„ï¼ˆè®¡åˆ†ç”¨
+    Card temp[5];
+    temp[0] = game->communityCards[0];
+    temp[1] = game->communityCards[1];
+
+    srand((unsigned int)time(NULL));
+
+    bool selectedCards[5] = { false }; // å­˜å‚¨å·²é€‰æ‹©çš„ç‰Œç´¢å¼•
+    int selectedCount = 0;             // å½“å‰é€‰ä¸­çš„ç‰Œæ•°
+    static int selectedIndex;          //è¢«é€‰ä¸­çš„ç‰Œåºå·
+    int cardIndex = 2;
+    while (selectedCount != 3) {
+        selectedIndex = rand() % 5;
+        if (!selectedCards[selectedIndex]) {//è¯¥ç‰Œæœªè¢«é€‰ä¸­
+            selectedCards[selectedIndex] = true;
+            player->hand[selectedIndex].visible = true;
+            temp[cardIndex] = player->hand[selectedIndex]; //æ›´æ–°ä¸´æ—¶ç‰Œç»„
+            cardIndex++;
+            player->hand[selectedIndex] = dealCard(deck);//å…ˆæŠŠç‰Œå‘äº†
+            selectedCount++;
+        }
+    }
+    //æŠŠé€‰ä¸­çš„ç‰Œå±•ç¤ºåˆ°å…¬å…±ç‰Œæ—è¾¹
+    for (int i = 2; i < 5; i++) {
+        drawCardAt(150 + i * 100, 220, &temp[i]);
+    }
+    line(330, 200, 330, 340);
+    score = GetScore(temp);
+
+    return score;
 }
