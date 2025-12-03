@@ -9,83 +9,85 @@
 
 #define MAX_PLAYERS 5
 
-//Íæ¼ÒÀàĞÍ
+//ç©å®¶ç±»å‹
 typedef enum { 
 	HUMAN, AI 
 } PlayerType;
 
-//Íæ¼Ò×´Ì¬
+//ç©å®¶çŠ¶æ€
 typedef struct {
-	char name[50];             //Íæ¼ÒÃû³Æ
-	PlayerType type;           //Íæ¼ÒÀàĞÍ
-	Card hand[5];              //Íæ¼ÒÊÖÅÆ=
-	int score;                 //Íæ¼ÒµÃ·Ö
-	int chips;                 //Íæ¼Ò³ïÂëÊı
-	bool isActive;             //ÊÇ·ñÈÔ²ÎÓëµ±¾Ö(Î´ÆúÅÆ£©
-	bool hasChecked;           // ¼ÇÂ¼ÊÇ·ñÒÑ¾­¹ıÅÆ
-	int finalRank;             // ×îÖÕÅÅÃû (0±íÊ¾Î´ÅÅÃû, 1=µÚÒ»Ãû, 2=µÚ¶şÃû...)
-	bool isOut;                //ÊÇ·ñÌÔÌ­
+	char name[50];             //ç©å®¶åç§°
+	PlayerType type;           //ç©å®¶ç±»å‹
+	Card hand[5];              //ç©å®¶æ‰‹ç‰Œ=
+	int score;                 //ç©å®¶å¾—åˆ†
+	int chips;                 //ç©å®¶ç­¹ç æ•°
+	bool isActive;             //æ˜¯å¦ä»å‚ä¸å½“å±€(æœªå¼ƒç‰Œï¼‰
+	bool hasChecked;           // è®°å½•æ˜¯å¦å·²ç»è¿‡ç‰Œ
+	int finalRank;             // æœ€ç»ˆæ’å (0è¡¨ç¤ºæœªæ’å, 1=ç¬¬ä¸€å, 2=ç¬¬äºŒå...)
+	bool isOut;                //æ˜¯å¦æ·˜æ±°
 } Player;
 
-//ÏÂ×¢½×¶ÎµÄ²Ù×÷Ñ¡Ôñ
+//ä¸‹æ³¨é˜¶æ®µçš„æ“ä½œé€‰æ‹©
 typedef enum {
-	fold,  //ÆúÅÆ
-	check, //¹ıÅÆ
-	bet,   //ÏÂ×¢
-	call,  //¸ú×¢
-	raise, //¼Ó×¢
-	allin  //È«Ñº
+	fold,  //å¼ƒç‰Œ
+	check, //è¿‡ç‰Œ
+	bet,   //ä¸‹æ³¨
+	call,  //è·Ÿæ³¨
+	raise, //åŠ æ³¨
+	allin  //å…¨æŠ¼
 }Action;
 
-// ÓÎÏ·½×¶Î
+// æ¸¸æˆé˜¶æ®µ
 typedef enum {
-	GAME_START,      //ÓÎÏ·¿ªÊ¼/·¢ÅÆ
-	NEW_ROUND,       //ĞÂÒ»ÂÖ¿ªÊ¼
-	REPLACING,       // »»ÅÆ
-	BETTING,         // ÏÂ×¢
-	SHOWDOWN,        // ÂÖÁ÷Ì¯ÅÆ/Í³¼Æ·ÖÊı
-	GAME_OVER        //ÓÎÏ·½áÊø/½á¹ûÏÔÊ¾
+	GAME_START,      //æ¸¸æˆå¼€å§‹/å‘ç‰Œ
+	NEW_ROUND,       //æ–°ä¸€è½®å¼€å§‹
+	REPLACING,       // æ¢ç‰Œ
+	BETTING,         // ä¸‹æ³¨
+	SHOWDOWN,        // è½®æµæ‘Šç‰Œ/ç»Ÿè®¡åˆ†æ•°
+	GAME_OVER        //æ¸¸æˆç»“æŸ/ç»“æœæ˜¾ç¤º
 } GamePhase;
 
 
 
-// ÓÎÏ·Ö÷½á¹¹
+// æ¸¸æˆä¸»ç»“æ„
 typedef struct {
-	Player players[MAX_PLAYERS]; //Íæ¼ÒĞÅÏ¢
-	int playerCount;             //Íæ¼Ò×ÜÊı
-	int humanCount;              //ÈËÀàÍæ¼ÒÊı
-	Card communityCards[2];      // 2ÕÅ¹«¹²ÅÆ
-	int pot;                     // µ×³Ø
-	int currentBet;              // µ±Ç°»ØºÏ×î¸ßÏÂ×¢
-	int currentPlayer;           // µ±Ç°ĞĞ¶¯Íæ¼ÒË÷Òı
-	int bottomPlayer;            //µ×²¿ÏÔÊ¾Íæ¼Ò
-	GamePhase phase;             //µ±Ç°ÓÎÏ·½×¶Î
-	int roundCount;              //µ±Ç°ÂÖ´Î
-	bool allChecked;             // ¼ÇÂ¼ÊÇ·ñËùÓĞÍæ¼Ò¶¼¹ıÅÆ
+	Player players[MAX_PLAYERS]; //ç©å®¶ä¿¡æ¯
+	int playerCount;             //ç©å®¶æ€»æ•°
+	int humanCount;              //äººç±»ç©å®¶æ•°
+	Card communityCards[2];      // 2å¼ å…¬å…±ç‰Œ
+	int pot;                     // åº•æ± 
+	int currentBet;              // å½“å‰å›åˆæœ€é«˜ä¸‹æ³¨
+	int currentPlayer;           // å½“å‰è¡ŒåŠ¨ç©å®¶ç´¢å¼•
+	int bottomPlayer;            //åº•éƒ¨æ˜¾ç¤ºç©å®¶
+	GamePhase phase;             //å½“å‰æ¸¸æˆé˜¶æ®µ
+	int roundCount;              //å½“å‰è½®æ¬¡
+	bool allChecked;             // è®°å½•æ˜¯å¦æ‰€æœ‰ç©å®¶éƒ½è¿‡ç‰Œ
+	int currentRank;             //å½“å‰å‡ºå±€çš„ç©å®¶æ’è¡Œ
 } PokerGame;
 
-//Íæ¼Ò²Ù×÷º¯Êı
-void initPlayer(Player* player, const char* name, PlayerType type);          //Íæ¼Ò³õÊ¼»¯
-void dealCardsToPlayer(Player* player, Deck* deck , int CardNum);            //¸øÍæ¼Ò·¢ÅÆ£¨3/5£©
-Action playerBetChoice(PokerGame* game, Player* player, bool* isbetting);    //Íæ¼ÒÏÂ×¢»ØºÏÑ¡Ïî
-void playerCallorBet(PokerGame* game,Player* player, int amount);            //Íæ¼ÒÏÂ×¢»ò¸ú×¢
-void playerRaise(PokerGame* game, Player* player, int amount,int raiseAmount); //Íæ¼Ò¼Ó×¢
-bool playerReplaceCard(Player* player,  Deck* deck);                         //Íæ¼Ò»»ÅÆ
-void playerFoldCard(Player* player, PokerGame* game);                        //Íæ¼ÒÆúÅÆ
+//ç©å®¶æ“ä½œå‡½æ•°
+void initPlayer(Player* player, const char* name, PlayerType type);          //ç©å®¶åˆå§‹åŒ–
+void dealCardsToPlayer(Player* player, Deck* deck , int CardNum);            //ç»™ç©å®¶å‘ç‰Œï¼ˆ3/5ï¼‰
+Action playerBetChoice(PokerGame* game, Player* player, bool* isbetting);    //ç©å®¶ä¸‹æ³¨å›åˆé€‰é¡¹
+void playerCallorBet(PokerGame* game,Player* player, int amount);            //ç©å®¶ä¸‹æ³¨æˆ–è·Ÿæ³¨
+void playerRaise(PokerGame* game, Player* player, int amount,int raiseAmount); //ç©å®¶åŠ æ³¨
+bool playerReplaceCard(Player* player,  Deck* deck);                         //ç©å®¶æ¢ç‰Œ
+void playerFoldCard(Player* player, PokerGame* game);                        //ç©å®¶å¼ƒç‰Œ
 
 
-//ÓÎÏ·Á÷³Ìº¯Êı
-void initGame(PokerGame* game, Deck* deck);                        //³õÊ¼»¯ÓÎÏ·
-int Showdown(PokerGame* game,Player* player, Deck* deck);          // Ì¯ÅÆ½×¶Î
-void endGameRound(PokerGame* game);                                // ½áÊøµ±Ç°¾Ö
-void startNewRound(PokerGame* game, Deck* deck);                   //¿ªÊ¼ĞÂÒ»ÂÖÓÎÏ·
-bool isGameOver(const PokerGame* game);                            //¼ì²éÓÎÏ·ÊÇ·ñ½áÊø
+//æ¸¸æˆæµç¨‹å‡½æ•°
+void initGame(PokerGame* game, Deck* deck);                        //åˆå§‹åŒ–æ¸¸æˆ
+int Showdown(PokerGame* game,Player* player, Deck* deck);          // æ‘Šç‰Œé˜¶æ®µ
+void endGameRound(PokerGame* game);                                // ç»“æŸå½“å‰å±€
+void startNewRound(PokerGame* game, Deck* deck);                   //å¼€å§‹æ–°ä¸€è½®æ¸¸æˆ
+bool isGameOver(const PokerGame* game);                            //æ£€æŸ¥æ¸¸æˆæ˜¯å¦ç»“æŸ
 
 
-//¸üĞÂ³ïÂëÊı
+//æ›´æ–°ç­¹ç æ•°
 void UpdateChipsDisplay(PokerGame* game);
 
-//AIĞĞ¶¯Ïà¹Øº¯Êı
-//ÔİÎŞ
+//AIè¡ŒåŠ¨ç›¸å…³å‡½æ•°
+Action AIBetChoice(PokerGame* game, Player* player, bool* isbetting); //äººæœºä¸‹æ³¨å›åˆé€‰é¡¹
+int AIShowdown(PokerGame* game, Player* player, Deck* deck);          //äººæœºé€‰ç‰Œ
 
 #endif // GAME_H
