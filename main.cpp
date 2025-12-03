@@ -1,4 +1,4 @@
-﻿#include <graphics.h>
+#include <graphics.h>
 #include <stdio.h>
 #include "game.h"
 #include "card.h"
@@ -422,7 +422,7 @@ int main() {
                                 break;
                             case(raise)://玩家加注
                                 static int RaiseAmount;
-                                RaiseAmount = valueSelector(10, pokergame.players[i].chips);
+                                RaiseAmount = valueSelector(5, pokergame.players[i].chips - pokergame.currentBet);
                                 WaitForContinueScreen(&currentscreen);
                                 //提示文字
                                 _stprintf_s(playerActionText, sizeof(playerActionText), _T("玩家%d选择了加注%d"), i + 1, RaiseAmount);
@@ -443,8 +443,59 @@ int main() {
                             clearTips();
                         }//人机玩家
                         else if (pokergame.players[i].type == AI) {
-                            //
-                            continue;
+                            if (!pokergame.players[i].isOut) {
+                                //人机行动选择
+                                playerAction = AIBetChoice(&pokergame, &pokergame.players[i], &isbetting);
+                                //执行操作
+                                switch (playerAction) {
+                                case(fold)://玩家弃牌
+                                    //人机不会弃牌
+                                    break;
+                                case(check)://玩家过牌
+                                    //人机也不会过牌
+                                    break;
+                                case(bet)://玩家下注
+                                    pokergame.currentBet = 10;//人机自动下注10
+                                    //提示文字
+                                    settextcolor(WHITE);
+                                    settextstyle(25, 0, _T("黑体"));
+                                    TCHAR playerActionText[50];
+                                    _stprintf_s(playerActionText, sizeof(playerActionText), _T("玩家%d选择了下注%d"), i + 1, pokergame.currentBet);
+                                    outtextxy(500, 300, playerActionText);
+                                    playerCallorBet(&pokergame, &pokergame.players[i], pokergame.currentBet);
+                                    FlushBatchDraw();
+                                    break;
+                                case(call)://玩家跟注
+                                    //提示文字
+                                    _stprintf_s(playerActionText, sizeof(playerActionText), _T("玩家%d选择了跟注%d"), i + 1, pokergame.currentBet);
+                                    outtextxy(500, 300, playerActionText);
+                                    playerCallorBet(&pokergame, &pokergame.players[i], pokergame.currentBet);
+                                    FlushBatchDraw();
+                                    break;
+                                case(raise)://玩家加注
+                                    static int RaiseAmount;
+                                    RaiseAmount = 5;//人机自动加注5
+                                    WaitForContinueScreen(&currentscreen);
+                                    //提示文字
+                                    _stprintf_s(playerActionText, sizeof(playerActionText), _T("玩家%d选择了加注%d"), i + 1, RaiseAmount);
+                                    outtextxy(500, 300, playerActionText);
+                                    clearvalueSelector();
+                                    playerRaise(&pokergame, &pokergame.players[i], pokergame.currentBet, RaiseAmount);
+                                    FlushBatchDraw();
+                                    break;
+                                case(allin):
+                                    //提示文字
+                                    _stprintf_s(playerActionText, sizeof(playerActionText), _T("玩家%d选择了全押"), i + 1);
+                                    outtextxy(500, 300, playerActionText);
+                                    pokergame.pot += pokergame.players[i].chips;
+                                    pokergame.players[i].chips = 0;
+                                    break;
+                                }
+                                UpdateChipsDisplay(&pokergame);
+                                WaitForContinueScreen(&currentscreen);
+                                //清除提示文字
+                                clearTips();
+                            }
                         }
                     }
                 }
@@ -469,37 +520,65 @@ int main() {
                 //玩家轮流进行换牌操作
                 for (int i = 0; i < pokergame.playerCount; i++) {
                     printf("excute player %d\n", i);
-                    //人类玩家
-                    if (pokergame.players[i].type == HUMAN) {
-                        pokergame.players[i].score = Showdown(&pokergame, &pokergame.players[i], &deck);
-                        // 绘制提示文字
-                        settextcolor(WHITE);
-                        settextstyle(25, 0, _T("黑体"));
-                        TCHAR playerScoreText[50];
-                        _stprintf_s(playerScoreText, sizeof(playerScoreText), _T("玩家%d本轮得分%d"), i + 1, pokergame.players[i].score);
-                        outtextxy(500, 400, playerScoreText);
-                        _stprintf_s(playerScoreText, sizeof(playerScoreText), _T("%d"),  pokergame.players[i].score);
-                        outtextxy(25, 490, playerScoreText);
-                        FlushBatchDraw();
-                        WaitForContinueScreen(&currentscreen);
-                        //清除提示文字
-                        setfillcolor(RGB(49, 78, 22));
-                        solidrectangle(500, 380, 700, 450);
-                        //清除展示的牌
-                        solidrectangle(325, 200, 700, 340);
-                        
-                    }//人机玩家
-                    else if (pokergame.players[i].type == AI) {
-                        //暂时还是蠢人机
-                        continue;
+                    if (pokergame.players[i].isActive && !pokergame.players[i].isOut) {
+                        //人类玩家
+                        if (pokergame.players[i].type == HUMAN) {
+                            //当前玩家提示
+                            TCHAR playerText[50];
+                            _stprintf_s(playerText, sizeof(playerText), _T("玩家%d:"), i + 1);
+                            outtextxy(500, 170, playerText);
+                            pokergame.players[i].score = Showdown(&pokergame, &pokergame.players[i], &deck);
+                            // 绘制提示文字
+                            settextcolor(WHITE);
+                            settextstyle(25, 0, _T("黑体"));
+                            TCHAR playerScoreText[50];
+                            _stprintf_s(playerScoreText, sizeof(playerScoreText), _T("玩家%d本轮得分%d"), i + 1, pokergame.players[i].score);
+                            outtextxy(500, 400, playerScoreText);
+                            //玩家分数
+                            _stprintf_s(playerScoreText, sizeof(playerScoreText), _T("%d"), pokergame.players[i].score);
+                            outtextxy(25, 490, playerScoreText);
+                            FlushBatchDraw();
+                            WaitForContinueScreen(&currentscreen);
+                            //清除提示文字
+                            setfillcolor(RGB(49, 78, 22));
+                            solidrectangle(500, 165, 700, 450);
+                            //清除展示的牌
+                            solidrectangle(325, 200, 700, 340);
+
+                        }//人机玩家
+                        else if (pokergame.players[i].type == AI) {
+                            if(!pokergame.players[i].isOut) {//未出局
+                                //当前玩家提示
+                                TCHAR playerText[50];
+                                _stprintf_s(playerText, sizeof(playerText), _T("玩家%d:"), i + 1);
+                                outtextxy(500, 170, playerText);
+                                pokergame.players[i].score = AIShowdown(&pokergame, &pokergame.players[i], &deck);
+                                // 绘制提示文字
+                                settextcolor(WHITE);
+                                settextstyle(25, 0, _T("黑体"));
+                                TCHAR playerScoreText[50];
+                                _stprintf_s(playerScoreText, sizeof(playerScoreText), _T("玩家%d本轮得分%d"), i + 1, pokergame.players[i].score);
+                                outtextxy(500, 400, playerScoreText);
+                                //玩家分数
+                                _stprintf_s(playerScoreText, sizeof(playerScoreText), _T("%d"), pokergame.players[i].score);
+                                outtextxy(100 + 210 * (i - 1), 100, playerScoreText);
+                                FlushBatchDraw();
+                                WaitForContinueScreen(&currentscreen);
+                                //清除提示文字
+                                setfillcolor(RGB(49, 78, 22));
+                                solidrectangle(500, 165, 700, 450);
+                                //清除展示的牌
+                                solidrectangle(325, 200, 700, 340);
+                            }
+                        }
                     }
                 }
                 //底池筹码给到得分最高的玩家
                 int maxScore = 0;
                 int winnerIndex = 0;
                 for (int i = 0; i < pokergame.playerCount; i++) {
-                    maxScore = (pokergame.players[i].score > maxScore) ? pokergame.players[i].score : maxScore;
                     winnerIndex = (pokergame.players[i].score > maxScore) ? i : winnerIndex;
+                    maxScore = (pokergame.players[i].score > maxScore) ? pokergame.players[i].score : maxScore;
                 }
                 //绘制提示文字
                 pokergame.players[winnerIndex].chips += pokergame.pot;
@@ -512,8 +591,13 @@ int main() {
                 int remain = 0;  //剩余玩家数
                 for (int i = 0; i < pokergame.playerCount; i++) {
                     //剩余筹码为0，出局
-                    if (pokergame.players[i].chips == 0)
-                        pokergame.players[i].isOut = true;
+                    if (pokergame.players[i].chips == 0){
+                        if (!pokergame.players[i].isOut){//标记为出局并统计排名
+                            pokergame.players[i].finalRank = pokergame.currentRank;
+                            pokergame.currentRank--;
+                            pokergame.players[i].isOut = true;
+                        }
+                    }
                     if (!pokergame.players[i].isOut)
                         remain++;
                 }
@@ -526,6 +610,50 @@ int main() {
             }
             //游戏结束/结果显示
             case(GAME_OVER): {
+                cleardevice();
+                setbkcolor(RGB(49, 78, 22));
+                int maxchips = 0;
+                for (int i = 0; i < pokergame.playerCount; i++) {
+                    maxchips = (pokergame.players[i].chips > maxchips) ? pokergame.players[i].chips : maxchips;
+                }
+                if (pokergame.players[0].chips == maxchips) {
+                    settextstyle(50, 0, _T("隶书"));
+                    settextcolor(RGB(251, 234, 208));
+                    //第一行
+                    const TCHAR* text1 = _T("恭喜！");
+                    int text1_width = textwidth(text1);  // 获取文字宽度
+                    int text1_height = textheight(text1); // 获取文字高度
+                    int x1 = (1080 - text1_width) / 2;    // 水平居中
+                    int y1 = (680 - 2 * text1_height) / 2; // 垂直居中（考虑两行文字）
+                    outtextxy(x1, y1, text1);
+
+                    // 第二行文字
+                    const TCHAR* text2 = _T("你赢了！");
+                    int text2_width = textwidth(text2);
+                    int x2 = (1080 - text2_width) / 2;    // 水平居中
+                    int y2 = y1 + text1_height + 20;      // 在上一行下面，加20像素间距
+                    outtextxy(x2, y2, text2);
+                }
+                else {
+                    settextstyle(50, 0, _T("隶书"));
+                    settextcolor(RGB(251, 234, 208));
+                    //第一行
+                    const TCHAR* text1 = _T("可惜！");
+                    int text1_width = textwidth(text1);  // 获取文字宽度
+                    int text1_height = textheight(text1); // 获取文字高度
+                    int x1 = (1080 - text1_width) / 2;    // 水平居中
+                    int y1 = (680 - 2 * text1_height) / 2; // 垂直居中（考虑两行文字）
+                    outtextxy(x1, y1, text1);
+
+                    // 第二行文字
+                    const TCHAR* text2 = _T("你输了！");
+                    int text2_width = textwidth(text2);
+                    int x2 = (1080 - text2_width) / 2;    // 水平居中
+                    int y2 = y1 + text1_height + 20;      // 在上一行下面，加20像素间距
+                    outtextxy(x2, y2, text2);
+                }
+                WaitForContinueScreen(&currentscreen);
+                currentscreen = mainscreen;
                 isGameInit = 0;
                 break;
             }
@@ -703,26 +831,137 @@ int main() {
         }
 
         // 规则界面
-        else if (currentscreen == rule) {
-            cleardevice();
-            //绘制标题
-            settextstyle(100, 0, _T("楷体"));
-            settextcolor(WHITE);
-            x = textwidth(_T("游戏规则"));
-            outtextxy((1080 - x) / 2, 10, _T("游戏规则"));
+else if (currentscreen == rule) {
+    cleardevice();
 
-            ExMessage msg;   //鼠标及键盘信息结构体
-            while (peekmessage(&msg, EM_MOUSE | EM_KEY)) {
-                if (msg.message == WM_KEYDOWN) {
-                    switch (msg.vkcode) {
-                    case VK_BACK:
-                        currentscreen = mainscreen;
-                        break;
-                    }
-                }
+    // 绘制标题
+    settextstyle(100, 0, _T("楷体"));
+    settextcolor(WHITE);
+    x = textwidth(_T("游戏规则"));
+    outtextxy((1080 - x) / 2, 10, _T("游戏规则"));
+
+    // 绘制返回提示
+    settextstyle(30, 0, _T("宋体"));
+    settextcolor(RGB(200, 200, 200));
+    outtextxy(50, 600, _T("按ESC或Backspace返回主菜单"));
+
+    // 设置规则正文样式
+    settextstyle(25, 0, _T("宋体"));
+    settextcolor(RGB(240, 240, 240));
+
+    // 规则内容数组
+    const TCHAR* rules[] = {
+        _T("基本规则："),
+        _T("• 每名玩家初始筹码为100，每次下注金额不小于10"),
+        _T("• 每轮游戏开始后每名玩家上交5筹码作为底注"),
+        _T("• 玩家获得5张初始手牌，场上展示1张公共牌，另1张牌面向下"),
+        _T("• 此时可选择进行一次换牌（每次只能换一张）"),
+        _T("• 换牌结束后进行第一轮下注"),
+        _T("• 第一轮下注后展示另1张公共牌，进行第二次换牌和下注"),
+        _T("• 下注结束后玩家从5张手牌中选出3张，轮流展示手牌"),
+        _T("• 与两张公共牌的组合计算分数，最高者获得所有筹码"),
+        _T("• 剩余两张手牌不展示并保留到下一轮游戏"),
+        _T("• 若有多名得分最高者，则平分底池"),
+        _T(""),
+        _T("手牌获得规则："),
+        _T("• 第一轮游戏所有玩家获得5张手牌"),
+        _T("• 后续轮次："),
+        _T("  - 若前一轮未弃牌，玩家获得3张新手牌"),
+        _T("  - 若前一轮弃牌，玩家获得5张新手牌"),
+        _T(""),
+        _T("下注操作："),
+        _T("• 弃牌：随时可选，筹码-5并加入底池"),
+        _T("• 过牌：无人下注时可选，不下注"),
+        _T("• 下注：无人下注时可选，不小于10"),
+        _T("• 跟住：有人下注时可选，下注筹码数与上一人相同"),
+        _T("• 加注：有人下注时可选，下注筹码数大于上一人"),
+        _T("• 全押：筹码不足以跟注或下注时可选"),
+        _T(""),
+        _T("特殊规则："),
+        _T("• 若玩家在一次行动中过牌，下次行动中不得再进行过牌"),
+        _T("• 若一次行动中所有玩家均过牌，则下次行动的第一人必须下注"),
+        _T("• 当场上只剩两名玩家持有筹码时游戏结束"),
+        _T("• 持筹码数多者获胜")
+    };
+
+    int ruleCount = sizeof(rules) / sizeof(rules[0]);
+    int lineHeight = 40;  // 行间距
+    int startY = 130;     // 起始Y坐标
+    int pageHeight = 15;  // 每页显示的行数
+
+    static int scrollOffset = 0;  // 滚动偏移量
+
+    ExMessage msg;   // 鼠标及键盘信息结构体
+
+    while (peekmessage(&msg, EM_MOUSE | EM_KEY)) {
+        if (msg.message == WM_KEYDOWN) {
+            switch (msg.vkcode) {
+            case VK_BACK:
+            case VK_ESCAPE:
+                currentscreen = mainscreen;
+                scrollOffset = 0;  // 重置滚动位置
+                break;
+            case VK_UP:
+            case VK_PRIOR:  // Page Up
+                if (scrollOffset > 0) scrollOffset--;
+                break;
+            case VK_DOWN:
+            case VK_NEXT:   // Page Down
+                if (scrollOffset < ruleCount - pageHeight) scrollOffset++;
+                break;
             }
-            FlushBatchDraw();
         }
+        else if (msg.message == WM_MOUSEWHEEL) {
+            // 鼠标滚轮滚动
+            if (msg.wheel > 0 && scrollOffset > 0) {
+                scrollOffset--;
+            }
+            else if (msg.wheel < 0 && scrollOffset < ruleCount - pageHeight) {
+                scrollOffset++;
+            }
+        }
+    }
+
+    // 绘制规则文本（带滚动效果）
+    for (int i = 0; i < pageHeight; i++) {
+        int ruleIndex = i + scrollOffset;
+        if (ruleIndex < ruleCount) {
+            // 标题行特殊处理
+            if (rules[ruleIndex][0] == _T('基') ||
+                rules[ruleIndex][0] == _T('手') ||
+                rules[ruleIndex][0] == _T('下') ||
+                rules[ruleIndex][0] == _T('特')) {
+                settextcolor(RGB(255, 215, 0));  // 金色标题
+                settextstyle(30, 0, _T("楷体"));
+            }
+            else if (rules[ruleIndex][0] == _T('•') || rules[ruleIndex][0] == _T(' ')) {
+                settextcolor(RGB(220, 220, 220));  // 浅灰色正文
+                settextstyle(25, 0, _T("宋体"));
+            }
+            else if (rules[ruleIndex][0] == _T('-')) {
+                settextcolor(RGB(200, 230, 255));  // 浅蓝色子项
+                settextstyle(22, 0, _T("宋体"));
+            }
+            else {
+                settextcolor(RGB(240, 240, 240));
+                settextstyle(25, 0, _T("宋体"));
+            }
+
+            // 计算文本位置
+            x = textwidth(rules[ruleIndex]);
+            outtextxy((1080 - x) / 2, startY + i * lineHeight, rules[ruleIndex]);
+        }
+    }
+
+    // 绘制滚动条提示
+    if (ruleCount > pageHeight) {
+        settextstyle(20, 0, _T("宋体"));
+        settextcolor(RGB(150, 150, 150));
+        outtextxy(950, 620, _T("↑↓ 滚动"));
+    }
+
+    FlushBatchDraw();
+    }
     }
     
     closegraph();
